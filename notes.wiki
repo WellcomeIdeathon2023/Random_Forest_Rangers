@@ -10,7 +10,7 @@ https://co-connect.ac.uk/docs/
   - LASSO etc..
 - modern:
   - kmeans
-  - pca (duncan this idea is rubbish) 
+  - pca 
   - louvain / phenograph
   - tsne/umaps
   - neural network stuff
