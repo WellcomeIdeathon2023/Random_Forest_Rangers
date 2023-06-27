@@ -115,7 +115,7 @@
 │   │   ├── sdy296-dr47_subject_2_illumina_beadarray.txt (n = 220, refs files)
 │   │   └── sdy296-dr47_subject_2_rna_sequencing_result.txt (n = 43, refs files)
 │   ├── sdy296-dr47_tab
-│   │   ├── arm_2_subject.csv
+│   │   ├── arm_2_subject.csv (age)
 │   │   ├── arm_or_cohort.csv
 │   │   ├── assessment_component.csv
 │   │   ├── assessment_panel.csv
