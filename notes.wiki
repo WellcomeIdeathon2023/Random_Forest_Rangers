@@ -10,7 +10,7 @@ https://co-connect.ac.uk/docs/
   - LASSO etc..
 - modern:
   - kmeans
-  - pca
+  - pca (principal components)
   - louvain / phenograph
   - tsne/umaps
   - neural network stuff
