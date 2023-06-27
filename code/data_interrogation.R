@@ -117,38 +117,86 @@ list.files("../data/sdy296/sdy296-dr47_tab/", full.names = TRUE) %>%
 
 # this doesn't work because it is not joining in order
 
-# construct a graph to analyse this
+# construct a graph to analyse file relationships
 
 library(igraph)
 library(GGally)
-library(gtools)
 
-graph <-
+link <-
 column_data %>%
   filter(column != "...1") %>%
-  filter(present) %>%
-  graph_from_data_frame(directed = FALSE)
+  filter(present) 
 
-column_data %>%
-  filter(column != "...1") %>%
-  rename(file1 = file) %>%
-  mutate(file2 = file1) %>%
-  head
+get_intersect_file <- function(x) {
+  a1 <- pull(filter(link, file == x[[1]]), column)
+  b1 <- pull(filter(link, file == x[[2]]), column)
 
-graph %>%
-  ggnet()
+  data.frame(a = x[[1]],
+             b = x[[2]],
+             intrsct = length(intersect(a1, b1))
+             ) %>% return
+}
 
 files <-
 column_data %>%
   pull(file) %>%
   unique
 
-combn(1:length(files), 2) %>%
-  t() %>%
-  head
+file_edges <-
+combn(files, 2, simplify = FALSE) %>%
+  map(., ~get_intersect_file(.)) %>%
+  reduce(rbind) %>%
+  filter(intrsct >= 1)
 
-combn(files, 2) %>%
-  t() %>%
-  head
+file_graph <-
+file_edges %>%
+  graph_from_data_frame(directed = FALSE)
 
-  str
+file_graph %>%
+  ggnet2(label = TRUE,
+         label.size = 3,
+         label.alpha = 0.6,
+         size = 25,
+         alpha = 0.7,
+         layout.exp = 0.2)
+
+
+# construct a graph to analyse column relationships
+
+link <-
+column_data %>%
+  filter(column != "...1") %>%
+  filter(present) 
+
+get_intersect_column <- function(x) {
+  a1 <- pull(filter(link, column == x[[1]]), file)
+  b1 <- pull(filter(link, column == x[[2]]), file)
+
+  data.frame(a = x[[1]],
+             b = x[[2]],
+             intrsct = length(intersect(a1, b1))
+             ) %>% return
+}
+
+columns <-
+link %>%
+  pull(column) %>%
+  unique
+
+column_edges <-
+combn(columns, 2, simplify = FALSE) %>%
+  map(., ~get_intersect_column(.)) %>%
+  reduce(rbind) %>%
+  filter(intrsct >= 1)
+
+column_graph <-
+column_edges %>%
+  graph_from_data_frame(directed = FALSE)
+
+column_graph %>%
+  ggnet2(label = TRUE,
+         label.size = 3,
+         label.alpha = 0.6,
+         size = 8,
+         alpha = 0.7,
+         layout.exp = 0.2)
