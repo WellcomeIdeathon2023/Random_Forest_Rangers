@@ -104,12 +104,12 @@
 ├── sdy296
 │   ├── protocols
 │   │   └── Study_Design.PTL6569.pdf
-│   ├── resultfiles
-│   │   ├── gene_expression_result
+│   ├── resultfiles (there are 37 patients, 13 with data in all 4 datasets)
+│   │   ├── gene_expression_result (a 60 genes expression on n = 36 from nanostring, intersect of 13 with rna_seq)
 │   │   │   └── Nanostring_norm_data_DS10_ESIDs_SDY296.587721.txt
-│   │   ├── hai_result.csv (haemaglutin influenza antibody results n = 223)
-│   │   ├── neut_ab_titer_result.csv (0, 28 days, n = 223)
-│   │   ├── rna_sequencing_result
+│   │   ├── hai_result.csv (haemaglutin influenza antibody results n = 37)
+│   │   ├── neut_ab_titer_result.csv (0, 28 days, n = 37)
+│   │   ├── rna_sequencing_result (15573 genes, n = 42, intersect of 13 with nanostring)
 │   │   │   └── SDY296_EXP13760_RNA_seq.703270.tsv
 │   │   ├── sdy296-dr47_subject_2_gene_expression_result.txt (n = 37, refs files)
 │   │   ├── sdy296-dr47_subject_2_illumina_beadarray.txt (n = 220, refs files)
