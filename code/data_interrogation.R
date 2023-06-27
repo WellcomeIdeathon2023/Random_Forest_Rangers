@@ -121,6 +121,7 @@ list.files("../data/sdy296/sdy296-dr47_tab/", full.names = TRUE) %>%
 
 library(igraph)
 library(GGally)
+library(gtools)
 
 graph <-
 column_data %>%
@@ -130,8 +131,24 @@ column_data %>%
 
 column_data %>%
   filter(column != "...1") %>%
-  print
+  rename(file1 = file) %>%
+  mutate(file2 = file1) %>%
+  head
 
 graph %>%
   ggnet()
 
+files <-
+column_data %>%
+  pull(file) %>%
+  unique
+
+combn(1:length(files), 2) %>%
+  t() %>%
+  head
+
+combn(files, 2) %>%
+  t() %>%
+  head
+
+  str
