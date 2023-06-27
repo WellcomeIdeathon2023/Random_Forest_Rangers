@@ -4,6 +4,9 @@
 ideathon data:
 https://github.com/WellcomeIdeathon2023/infectious_disease_challenges/tree/main/correlates/datasets
 
+our page:
+https://github.com/WellcomeIdeathon2023/Random_Forest_Rangers
+
 co-connect docs:
 https://co-connect.ac.uk/docs/
 
