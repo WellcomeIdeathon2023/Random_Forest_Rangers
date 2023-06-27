@@ -10,7 +10,7 @@ https://co-connect.ac.uk/docs/
   - LASSO etc..
 - modern:
   - kmeans
-  - pca
+  - pca (duncan this idea is rubbish) 
   - louvain / phenograph
   - tsne/umaps
   - neural network stuff
@@ -39,4 +39,9 @@ questions:
   - validation / training
 - 2. new diseases/vaccines:
 
+
+
+
 = steps =
+
+Look at the data files - 
