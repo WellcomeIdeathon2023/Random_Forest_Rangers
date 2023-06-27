@@ -1,6 +1,6 @@
-[[ideathon_wellcome_challenge_1]]
+# Wellcome Ideathon Infectious Disease Challenge 1
 
-## data
+## useful links
 ideathon data:
 https://github.com/WellcomeIdeathon2023/infectious_disease_challenges/tree/main/correlates/datasets
 
@@ -14,7 +14,15 @@ https://co-connect.ac.uk/docs/
   - decide how best to merge/analyse the data
   - work out how to import into R and merge
 
-## thoughts
+## data
+- SDY180
+  - fluzone 2009-2010
+- SDY296
+  - fluzone 2011-2012
+- SDY301
+  - fluzone 2012-2012 (?)
+
+# thoughts
 why do this:
 - targetting vulnerable populations of disease
 - finding populations that respond poorly to vaccinations
@@ -50,7 +58,6 @@ why do this:
   - multiple testing
   - validation / training
 - 2. new diseases/vaccines:
-
 
 
 
