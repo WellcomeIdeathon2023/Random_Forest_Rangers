@@ -16,11 +16,27 @@ https://co-connect.ac.uk/docs/
 
 ## data
 - SDY180
-  - fluzone 2009-2010
-- SDY296
-  - fluzone 2011-2012
-- SDY301
-  - fluzone 2012-2012 (?)
+  - healthy donor vaccinated with:
+    - influenza vaccine or
+    - pneumococcal vaccine or
+    - placebo
+  - blood samples taken before and after
+  - outcome:
+    - gene expression
+    - serum antibody results
+    - cytokine analysis
+  - time period:
+    - 2009/2010
+- SDY296/301
+  - healthy donor vaccinated with:
+    - influenza vaccine only
+  - blood samples taken before and after
+  - outcome:
+    - gene expression
+    - serum antibody results
+  - time period:
+    - 2011/2012 (296)
+    - 2012/2013 (301)
 
 # thoughts
 why do this:
