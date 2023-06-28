@@ -79,10 +79,6 @@ column_data %>%
   arrange(desc(n)) %>%
   pull(file)
 
-  mutate(column = factor(column, levels = column_order, ordered = TRUE)) %>%
-  mutate(file = factor(file, levels = name_order, ordered = TRUE)) %>%
-
-
 column_data %>%
   group_by(file) %>%
   mutate(column_n = sum(present)) %>%
@@ -93,7 +89,7 @@ column_data %>%
   arrange(desc(column_n), desc(file_n)) %>%
   select(-column_n, -file_n) %>%
   pivot_wider(names_from = c("file"), values_from = "present", names_sort = FALSE) %>%
-  write.csv("column_data.csv")
+  write.csv("../results/sdy296_meta_data.csv")
 
 column_data %>%
   group_by(file) %>%
@@ -107,15 +103,12 @@ column_data %>%
   pivot_wider(names_from = c("file"), values_from = "present", names_sort = FALSE) %>%
   print(n = 50)
 
-
-
 # attempt to join all colums
-list.files("../data/sdy296/sdy296-dr47_tab/", full.names = TRUE) %>%
-  map(., ~read_csv(., col_types = cols(.default = col_character()))) %>%
-  map(., ~select(., -...1)) %>%
-  reduce(full_join)
-
-# this doesn't work because it is not joining in order
+# list.files("../data/sdy296/sdy296-dr47_tab/", full.names = TRUE) %>%
+#   map(., ~read_csv(., col_types = cols(.default = col_character()))) %>%
+#   map(., ~select(., -...1)) %>%
+#   reduce(full_join)
+# this fails because it is not joining in order
 
 # construct a graph to analyse file relationships
 
@@ -157,8 +150,11 @@ file_graph %>%
          label.size = 3,
          label.alpha = 0.6,
          size = 25,
+         color = "#9cc0c9",
          alpha = 0.7,
          layout.exp = 0.2)
+
+ggsave("../results/sdy296_file_relationship_graph.png", width = 6, height = 6)
 
 
 # construct a graph to analyse column relationships
@@ -198,5 +194,8 @@ column_graph %>%
          label.size = 3,
          label.alpha = 0.6,
          size = 8,
+         color = "#c99cc0",
          alpha = 0.7,
          layout.exp = 0.2)
+
+ggsave("../results/sdy296_variable_relationship_graph.png", height = 8, width = 8)
