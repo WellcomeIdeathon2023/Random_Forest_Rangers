@@ -13,9 +13,9 @@ https://co-connect.ac.uk/docs/
 ## next steps
 - set up git repo ✓
 - familiarise with git commits/merges ✓
-- look at the data files 
-  - decide how best to merge/analyse the data
-  - work out how to import into R and merge
+- look at the data files ✓
+  - decide how best to merge/analyse the data ←
+  - work out how to import into R and merge ←
 
 ## data
 - SDY180
@@ -63,6 +63,14 @@ why do this:
 ## challenges of this challenge
 - missing data
 - types of data
+  - many tables of connected variables
+  - can connect them using graphs
+  - but some of these connections may not make sense (i.e. NA columns)
+  - need to interpret a column to see whether we can join on that or not
+  - not an obvious heuristic to do this
+    - factor levels > 1
+    - ending in `ACCESSION`
+  - need to have a think about how we know whether a join makes sense or not
 - data standardisation
 
 ## challenges of this in general

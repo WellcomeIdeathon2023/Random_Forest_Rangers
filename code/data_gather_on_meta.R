@@ -174,12 +174,27 @@ get_data_from_columns <- function(nodes){
 
   path_files <- list()
   for(i in 1:length(file_graph_path)){
-    path_files[[i]] <- read_csv(filepath_linker[filepath_linker$filename == file_graph_path[i], "file_location"], col_types = cols(.default = col_character()))
+    path_files[[i]] <- read_csv(filepath_linker[filepath_linker$filename == file_graph_path[i], "file_location"], col_types = cols(.default = col_character())) %>%
+      select(., -...1)
   }
 
   reduce(path_files, full_join) %>%
     return
 }
 
-get_data_from_columns(c("DISEASE_ONTOLOGY_ID", "MIN_SUBJECT_AGE_IN_YEARS"))
+nodes <- c("SUBJECT_ACCESSION", "EXPSAMPLE_ACCESSION")
+nodes <- c("BIOSAMPLE_ACCESSION", "EXPSAMPLE_ACCESSION")
+nodes <- c("ETHNICITY", "STUDY_TIME_COLLECTED")
+get_data_from_columns(nodes) %>%
+  print(n = 40)
 
+full_join(path_files[[1]], path_files[[2]], na_matches = "never") %>%
+  summarise_all(., ~length(levels(factor(.)))) %>%
+  t()
+
+# attempt to implement this for many column names
+
+nodes <- sample(columns, 5)
+
+distances(column_graph) %>%
+  head
