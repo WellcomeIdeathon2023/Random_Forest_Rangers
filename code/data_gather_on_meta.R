@@ -30,7 +30,7 @@ list.files(dir1, full.names = TRUE) %>%
   map2(., file_names, ~data.frame(column = column_names, file = .y, present = column_names %in% .x)) %>%
   reduce(rbind) 
 
-# construct a graph to analyse column relationships
+# construct a graph to analyse file relationships
 
 # remove rownumber column
 link <-
@@ -39,9 +39,9 @@ column_data %>%
   filter(present) 
 
 # find number of connecting files
-get_intersect_column <- function(x) {
-  a1 <- pull(filter(link, column == x[[1]]), file)
-  b1 <- pull(filter(link, column == x[[2]]), file)
+get_intersect_file <- function(x) {
+  a1 <- pull(filter(link, file == x[[1]]), column)
+  b1 <- pull(filter(link, file == x[[2]]), column)
 
   data.frame(a = x[[1]],
              b = x[[2]],
@@ -49,7 +49,7 @@ get_intersect_column <- function(x) {
              ) %>% return
 }
 
-# find number aof connecting files and return the files
+# find number of connecting files and return the files
 get_intersect_column_plus_files <- function(x) {
   a1 <- pull(filter(link, column == x[[1]]), file)
   b1 <- pull(filter(link, column == x[[2]]), file)
@@ -61,29 +61,29 @@ get_intersect_column_plus_files <- function(x) {
              ) %>% return
 }
 
-# get column names
-columns <-
+# get file names
+files <-
 link %>%
-  pull(column) %>%
+  pull(file) %>%
   unique
 
-# compare each column to see intersect of presence in files
-column_edges <-
-combn(columns, 2, simplify = FALSE) %>%
-  map(., ~get_intersect_column(.)) %>%
+# compare each file to see intersect of presence in ACCESSION columns
+file_edges <-
+combn(files, 2, simplify = FALSE) %>%
+  map(., ~get_intersect_file(.)) %>%
   reduce(rbind) %>%
   filter(intrsct >= 1) %>%
   mutate(weight = intrsct)
 
 # create graph
-column_graph <-
-column_edges %>%
+file_graph <-
+file_edges %>%
   graph_from_data_frame(directed = FALSE)
 
 
 # cluster the graph
-column_clusters <-
-cluster_louvain(column_graph, resolution = 1.2)
+file_clusters <-
+cluster_louvain(file_graph, resolution = 1.2)
 
 # plot
 
@@ -91,16 +91,15 @@ generate_hex_colours <- function(x){
   brewer.pal(length(unique(x)), "Dark2")[as.numeric(factor(x))]
 }
 
-column_graph %>%
+file_graph %>%
   ggnet2(label = TRUE,
          label.size = 3,
          label.alpha = 0.6,
-         color = column_clusters$membership,
+         color = file_clusters$membership,
          size = 20,
          alpha = 0.3,
          layout.exp = 0.2)
 
-## find path between two nodes
 
 # link filenames with filepath
 filepath_linker <-
@@ -109,14 +108,49 @@ list.files(dir1, full.names = TRUE) %>%
   mutate(filenamecsv = list.files(dir1, full.names = FALSE)) %>%
   mutate(filename = gsub("*.csv", "", filenamecsv)) 
 
-# get edges and files, uses list-column feature of tibbles
-column_edges_and_files <-
-combn(columns, 2, simplify = FALSE) %>%
-  map(., ~get_intersect_column_plus_files(.)) %>%
-  reduce(rbind) %>%
-  filter(intrsct >= 1) %>%
-  mutate(weight = intrsct)
+## find path between two files and return dataframes
+file_nodes <- sample(files, 2)
 
+get_data_from_files <- function(nodes){
+  path1 <-
+  shortest_paths(file_graph, from = file_nodes[[1]],
+                 to = file_nodes[[2]],
+                 output = "vpath") %>%
+    extract2("vpath") %>% extract2(1) %>% names(.)
+
+  path_files <- list()
+  for(i in 1:length(path1)){
+    path_files[[i]] <- read_csv(filepath_linker[filepath_linker$filename == path1[i], "file_location"], col_types = cols(.default = col_character())) %>%
+      select(., -...1)
+  }
+
+  reduce(path_files, full_join) %>%
+    return
+}
+
+# find which keys to join on (using ACCESSION)
+joining_keys <-
+intersect(colnames(path_files[[2]]), colnames(path_files[[3]])) %>%
+  .[grepl("ACCESSION", .)]
+
+# other columns which have the same name need to be removed or else clashes occur
+non_joining_keys <-
+intersect(colnames(path_files[[2]]), colnames(path_files[[3]])) %>%
+  .[!grepl("ACCESSION", .)]
+
+full_join(path_files[[2]], path_files[[3]])
+
+a <- path_files[[2]][,!colnames(path_files[[2]]) %in% non_joining_keys]
+
+b <- path_files[[3]][,!colnames(path_files[[3]]) %in% non_joining_keys]
+
+full_join(a, b,
+          na_matches = "never",
+          by = setNames(joining_keys, joining_keys)
+          )
+
+path_files[[2]]$NAME
+path_files[[3]]$NAME
 
 # this function will take a vector of two column names only
 get_data_from_columns <- function(nodes){
@@ -189,6 +223,13 @@ list.files(dir1, full.names = TRUE) %>%
 nodes <- sample(column_names_all, 2)
 
 # find which files have these data present
+
+files_of_interest <-
+column_data_all %>%
+  filter(column %in% nodes) %>%
+  filter(present) %>%
+  pull(file)
+
 
 
 
