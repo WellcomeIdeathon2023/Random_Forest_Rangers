@@ -15,16 +15,18 @@ list.files(dir1) %>%
 
 # get column names (includes ...1)
 column_names <-
-list.files("../data/sdy296/sdy296-dr47_tab/", full.names = TRUE) %>%
+list.files(dir1, full.names = TRUE) %>%
   map(., ~read_csv(.)) %>%
   map(., ~colnames(.)) %>%
-  reduce(., union)
+  reduce(., union) %>%
+  .[grepl("ACCESSION", .)]
 
 # find presence of column_names in each file
 column_data <-
 list.files(dir1, full.names = TRUE) %>%
   map(., ~read_csv(.)) %>%
   map(., ~colnames(.)) %>%
+  map(., ~(.[grepl("ACCESSION", .)])) %>%
   map2(., file_names, ~data.frame(column = column_names, file = .y, present = column_names %in% .x)) %>%
   reduce(rbind) 
 
@@ -36,7 +38,7 @@ column_data %>%
   filter(column != "...1") %>%
   filter(present) 
 
-# find number of intersecting files per column
+# find number of connecting files
 get_intersect_column <- function(x) {
   a1 <- pull(filter(link, column == x[[1]]), file)
   b1 <- pull(filter(link, column == x[[2]]), file)
@@ -47,7 +49,7 @@ get_intersect_column <- function(x) {
              ) %>% return
 }
 
-# get intersection columns with their files
+# find number aof connecting files and return the files
 get_intersect_column_plus_files <- function(x) {
   a1 <- pull(filter(link, column == x[[1]]), file)
   b1 <- pull(filter(link, column == x[[2]]), file)
@@ -59,7 +61,7 @@ get_intersect_column_plus_files <- function(x) {
              ) %>% return
 }
 
-# get column names without ...1
+# get column names
 columns <-
 link %>%
   pull(column) %>%
@@ -94,8 +96,8 @@ column_graph %>%
          label.size = 3,
          label.alpha = 0.6,
          color = column_clusters$membership,
-         size = 8,
-         alpha = 0.7,
+         size = 20,
+         alpha = 0.3,
          layout.exp = 0.2)
 
 ## find path between two nodes
@@ -107,7 +109,7 @@ list.files(dir1, full.names = TRUE) %>%
   mutate(filenamecsv = list.files(dir1, full.names = FALSE)) %>%
   mutate(filename = gsub("*.csv", "", filenamecsv)) 
 
-# get edges and files
+# get edges and files, uses list-column feature of tibbles
 column_edges_and_files <-
 combn(columns, 2, simplify = FALSE) %>%
   map(., ~get_intersect_column_plus_files(.)) %>%
@@ -115,40 +117,6 @@ combn(columns, 2, simplify = FALSE) %>%
   filter(intrsct >= 1) %>%
   mutate(weight = intrsct)
 
-# pick two random columns
-nodes <- sample(columns, 2)
-
-# find shortest path between columns
-path1 <-
-shortest_paths(column_graph, from = nodes[[1]],
-               to = nodes[[2]],
-               output = "vpath") %>%
-  extract2("vpath") %>% extract2(1) %>% names(.)
-
-# loop over path to find files in order
-file_graph_path <- vector()
-for(i in 1:(length(path1)-1)){
-  # filter needs to work in both directions as entries not duplicated in a/b
-  file_graph_path <-
-  filter(column_edges_and_files,
-         a %in% path1[c(i, i+1)],
-         b %in% path1[c(i, i+1)]
-         ) %>%
-  pull(files) %>% extract2(1) %>%
-  append(file_graph_path, .)
-}
-
-path_files <- list()
-for(i in 1:length(file_graph_path)){
-  path_files[[i]] <- read_csv(filepath_linker[filepath_linker$filename == file_graph_path[i], "file_location"], col_types = cols(.default = col_character()))
-}
-
-reduce(path_files, full_join) %>%
-  print
-
-
-# build it into a function
-nodes <- sample(columns, 2)
 
 # this function will take a vector of two column names only
 get_data_from_columns <- function(nodes){
@@ -182,15 +150,47 @@ get_data_from_columns <- function(nodes){
     return
 }
 
-nodes <- c("SUBJECT_ACCESSION", "EXPSAMPLE_ACCESSION")
-nodes <- c("BIOSAMPLE_ACCESSION", "EXPSAMPLE_ACCESSION")
-nodes <- c("ETHNICITY", "STUDY_TIME_COLLECTED")
-get_data_from_columns(nodes) %>%
-  print(n = 40)
+# pick two random columns
+nodes <- sample(columns, 2)
 
-full_join(path_files[[1]], path_files[[2]], na_matches = "never") %>%
-  summarise_all(., ~length(levels(factor(.)))) %>%
-  t()
+get_data_from_columns(nodes) %>%
+  select(nodes, everything()) %>%
+  print
+  write.csv("../results/merge_test.csv")
+
+# so do all files have an _ACCESSION
+
+# get column names (includes ...1)
+column_names_all <-
+list.files(dir1, full.names = TRUE) %>%
+  map(., ~read_csv(.)) %>%
+  map(., ~colnames(.)) %>%
+  reduce(., union) %>%
+  .[!grepl("...1", .)]
+
+# find presence of column_names in each file
+list.files(dir1, full.names = TRUE) %>%
+  map(., ~read_csv(.)) %>%
+  map(., ~colnames(.)) %>%
+  map(., ~grepl("ACCESSION", .)) %>%
+  map(., ~sum(.)) %>%
+  reduce(., c)
+# all files contain an _ACCESSION column
+
+# get all columns presence in files
+column_data_all <-
+list.files(dir1, full.names = TRUE) %>%
+  map(., ~read_csv(.)) %>%
+  map(., ~colnames(.)) %>%
+  map2(., file_names, ~data.frame(column = column_names, file = .y, present = column_names %in% .x)) %>%
+  reduce(rbind) %>%
+  filter(column != "...1") 
+
+nodes <- sample(column_names_all, 2)
+
+# find which files have these data present
+
+
 
 # attempt to implement this for many column names
 
