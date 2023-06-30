@@ -82,6 +82,8 @@ combn(columns, 2, simplify = FALSE) %>%
 
 # analyse each edge to determine direction
 
+dup_both <- function(x) duplicated(x) | duplicated(x, fromLast = TRUE)
+
 column_edges_and_files <-
 combn(columns, 2, simplify = FALSE) %>%
   map(., ~get_intersect_column_plus_files(.)) %>%
@@ -89,46 +91,112 @@ combn(columns, 2, simplify = FALSE) %>%
   filter(intrsct >= 1) %>%
   mutate(weight = intrsct)
 
-link1 <- column_edges_and_files[1,]
+column_edges_and_files <- mutate(column_edges_and_files, a_mapping = NA, b_mapping = NA)
 
-b <- link1$files[[1]][[1]]
+for (j in 1:nrow(column_edges_and_files)){
+  link1 <- column_edges_and_files[j,]
 
-column_mapping <-
-read_csv(filepath_linker[filepath_linker$filename == b, "file_location"]) %>%
-  select(link1$a, link1$b) %>%
-  distinct %>%
-  map(., ~dup_both(.)) %>%
-  map(., ~sum(.)) %>%
-  map(., ~ifelse(. > 0, "MANY", "ONE")) 
+  column_mappings <- list()
+  for(i in 1:length(link1$files[[1]])){
 
+    b <- link1$files[[1]][[i]]
 
-dup_both <- function(x) duplicated(x) | duplicated(x, fromLast = TRUE)
+    column_mapping <-
+    read_csv(filepath_linker[filepath_linker$filename == b, "file_location"]) %>%
+      select(a_mapping = link1$a, b_mapping = link1$b) %>%
+      distinct() %>%
+      map(., ~dup_both(.)) %>%
+      map(., ~sum(.)) %>%
+      map(., ~ifelse(. > 0, "ONE", "MANY")) 
 
-dup_both(c(1, 2, 2, 1, 2, 2, 3, 1, 3, 4))
+    column_mappings[[i]] <- data.frame(column_mapping)
+  }
 
+  #  amalgamate analysis into one line
+  column_mapping_amal <-
+  reduce(column_mappings, rbind) %>%
+    distinct 
 
-# create graph
-column_graph <-
-column_edges %>%
-  graph_from_data_frame(directed = FALSE)
+  # check that we have one mapping for all files
+  if(nrow(column_mapping_amal) == 1){
+    column_edges_and_files[j, "a_mapping"] <- column_mapping_amal$a_mapping
+    column_edges_and_files[j, "b_mapping"] <- column_mapping_amal$b_mapping
+  } else {
+  # if files are discrepant, then "MANY" takes priority
+  # i.e. one-to-many should overrule one-to-one.
+    column_mapping_amal <- 
+    column_mapping_amal %>%
+      map(., ~ifelse(sum(. == "MANY") > 0, "MANY", "ONE")) %>%
+      data.frame(.)
+    message("mappings not unique")
+    column_edges_and_files[j, "a_mapping"] <- column_mapping_amal$a_mapping
+    column_edges_and_files[j, "b_mapping"] <- column_mapping_amal$b_mapping
+  }
+}
 
+column_edge_map_type <-
+column_edges_and_files %>%
+  mutate(map_type = ifelse(a_mapping != b_mapping, "one-to-many",
+                           ifelse(a_mapping == "ONE", "one-to-one", "many-to-many"))) %>%
+  select(-files) 
 
-# cluster the graph
-column_clusters <-
-cluster_louvain(column_graph, resolution = 1.2)
+column_edge_map_type %>%
+  mutate(map_type = ifelse(a_mapping != b_mapping, "one-to-many",
+                           ifelse(a_mapping == "ONE", "one-to-one", "many-to-many"))) %>%
+  ggplot(aes(x = map_type))+
+  geom_bar()
+
+# swap around values in vertices to provide direction for igraph
+column_edge_map_type_directed <- column_edge_map_type
+for (i in 1:nrow(column_edge_map_type)){
+  if(column_edge_map_type[i,"map_type"] == "one-to-many" & column_edge_map_type[i, "a_mapping"] == "ONE"){
+    b <- column_edge_map_type[i, "a"]
+    a <- column_edge_map_type[i, "b"]
+    b_mapping <- column_edge_map_type[i, "a_mapping"]
+    a_mapping <- column_edge_map_type[i, "b_mapping"]
+
+    column_edge_map_type_directed[i, "a"] <- a
+    column_edge_map_type_directed[i, "b"] <- b
+    column_edge_map_type_directed[i, "a_mapping"] <- a_mapping
+    column_edge_map_type_directed[i, "b_mapping"] <- b_mapping
+  }
+  if(column_edge_map_type[i, "map_type"] %in% c("one-to-one", "many-to-many")){
+    b <- column_edge_map_type[i, "a"]
+    a <- column_edge_map_type[i, "b"]
+    b_mapping <- column_edge_map_type[i, "a_mapping"]
+    a_mapping <- column_edge_map_type[i, "b_mapping"]
+
+    column_edge_map_type_directed[i, "a"] <- a
+    column_edge_map_type_directed[i, "b"] <- b
+    column_edge_map_type_directed[i, "a_mapping"] <- a_mapping
+    column_edge_map_type_directed[i, "b_mapping"] <- b_mapping
+
+    # duplicate
+    column_edge_map_type_directed <- rbind(column_edge_map_type_directed, column_edge_map_type[i,])
+  }
+}
 
 # plot
 generate_hex_colours <- function(x){
   brewer.pal(length(unique(x)), "Dark2")[as.numeric(factor(x))]
 }
 
+# create graph
+column_graph <-
+column_edge_map_type_directed %>%
+  mutate(color = generate_hex_colours(map_type)) %>%
+  graph_from_data_frame(directed = TRUE)
+
 column_graph %>%
   ggnet2(label = TRUE,
+         mode = "fruchtermanreingold",
          label.size = 3,
          label.alpha = 0.6,
-         color = column_clusters$membership,
+         edge.color = "color",
          size = 20,
          alpha = 0.3,
+         arrow.size = 5,
+         arrow.gap = 0.02,
          layout.exp = 0.2)
 
-ggsave("../results/sdy296_meta_accession_weighted_clustered_graph.png", height = 8, width = 8)
+ggsave("../results/sdy296_meta_data_directed_graph.png", height = 8, width = 8)
