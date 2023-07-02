@@ -200,3 +200,103 @@ column_graph %>%
          layout.exp = 0.2)
 
 ggsave("../results/sdy296_meta_data_directed_graph.png", height = 8, width = 8)
+
+# algorithm to score the nodes
+edge_path_find <- column_edge_map_type_directed
+for (i in 1:nrow(column_edge_map_type_directed)){
+  if(column_edge_map_type_directed[i,"map_type"] == "one-to-many" & column_edge_map_type_directed[i, "a_mapping"] == "MANY"){
+    b <- column_edge_map_type_directed[i, "a"]
+    a <- column_edge_map_type_directed[i, "b"]
+    b_mapping <- column_edge_map_type_directed[i, "a_mapping"]
+    a_mapping <- column_edge_map_type_directed[i, "b_mapping"]
+
+    edge_path_find[i, "a"] <- a
+    edge_path_find[i, "b"] <- b
+    edge_path_find[i, "a_mapping"] <- a_mapping
+    edge_path_find[i, "b_mapping"] <- b_mapping
+  }
+}
+
+# need direction to be ONE -> MANY
+# also don't want ONE - ONE, or MANY - MANY
+
+edge_path_directed <-
+edge_path_find %>%
+  filter(map_type == "one-to-many")
+
+get_next_node <- function(vert1){
+edge_path_directed %>%
+  filter(a == vert1) %>%
+  sample_n(., 1) %>%
+  .$b %>%
+  return
+}
+
+# run random walks
+iterations <- 300
+
+{
+  vertices_score <- data.frame(vert = unique(c(edge_path_directed$a, edge_path_directed$b)))
+
+  vert1 <- sample(vertices_score$vert, 1)
+
+  # start at 5
+  vertices_score[vertices_score$vert == vert1, "score"] <- 5
+  adjusted <- 1
+  run <- TRUE
+
+  while (run) {
+    iterations = iterations - 1
+    if (iterations < 1) {run = FALSE}
+
+    # check if vert1 is na, if so, assign it a number
+    vert1_score <- vertices_score[vertices_score$vert == vert1, "score"]
+    if (is.na(vert1_score)) {
+      vert1_score <- 5}
+    vertices_score[vertices_score$vert == vert1, "score"] <- vert1_score 
+
+    # check if there is a vert2 that it points to
+    if (nrow(filter(edge_path_directed, a == vert1)) > 0){
+
+      # get the vert2
+      vert2 <- get_next_node(vert1)
+
+      # get vert2 score
+      vert2_score <- vertices_score[vertices_score$vert == vert2, "score"]
+
+      # compare score with vert1 and adjust if needed
+      if (is.na(vert2_score)) {
+        vert2_score <- vert1_score + 1 
+        adjusted <- adjusted + 1
+      } else if (vert2_score <= vert1_score) {
+        vert2_score <- vert1_score + 1
+        adjusted <- adjusted + 1
+      } else if (vert2_score >  vert1_score) {
+      }
+
+      # write out new vert2 score
+      vertices_score[vertices_score$vert == vert2, "score"] <- vert2_score 
+
+      # get next vert2
+      vert1 <- vert2
+
+    } else {
+
+
+      # if there is no vert2 that it points to, generate a new vert1 for next cycle
+      if (sum(is.na(vertices_score$score)) > 0) {
+        vert1 <-
+          vertices_score %>%
+          filter(is.na(score)) %>%
+          sample_n(., 1) %>%
+          .$vert
+      } else {
+        vert1 <- vertices_score %>% sample_n(., 1) %>% .$vert
+      }
+    }
+
+    print(adjusted)
+  }
+}
+
+vertices_score
