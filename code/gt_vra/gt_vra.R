@@ -192,6 +192,7 @@ ggplot(combined_data, aes(x = Timepoint, y = value, fill = study)) +
     y = "Value",
     fill = "Study"
   )
+ggsave(filename = "/Users/tutg/Documents/DataSciComp/Random_Forest_Rangers/results/Responses from SDY180 and SDY296 Studies.png")
 
 
 # Load required package
@@ -231,4 +232,7 @@ head(sdy180_long)
 
 # Check the distribution of 'Timepoint' again
 table(sdy180_long$Timepoint)
+
+
+
 
