@@ -70,7 +70,8 @@ why do this:
   - not an obvious heuristic to do this
     - factor levels > 1
     - ending in `ACCESSION`
-  - need to have a think about how we know whether a join makes sense or not
+  - many-to-one mappings, and ranking graph
+- going forward and using KNN to input new data
 - data standardisation
 
 ## challenges of this in general

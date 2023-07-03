@@ -107,7 +107,7 @@ for (j in 1:nrow(column_edges_and_files)){
       distinct() %>%
       map(., ~dup_both(.)) %>%
       map(., ~sum(.)) %>%
-      map(., ~ifelse(. > 0, "ONE", "MANY")) 
+      map(., ~ifelse(. > 0, "DUP", "UNIQUE")) 
 
     column_mappings[[i]] <- data.frame(column_mapping)
   }
@@ -126,7 +126,7 @@ for (j in 1:nrow(column_edges_and_files)){
   # i.e. one-to-many should overrule one-to-one.
     column_mapping_amal <- 
     column_mapping_amal %>%
-      map(., ~ifelse(sum(. == "MANY") > 0, "MANY", "ONE")) %>%
+      map(., ~ifelse(sum(. == "DUP") > 0, "DUP", "UNIQUE")) %>%
       data.frame(.)
     message("mappings not unique")
     column_edges_and_files[j, "a_mapping"] <- column_mapping_amal$a_mapping
@@ -137,19 +137,17 @@ for (j in 1:nrow(column_edges_and_files)){
 column_edge_map_type <-
 column_edges_and_files %>%
   mutate(map_type = ifelse(a_mapping != b_mapping, "one-to-many",
-                           ifelse(a_mapping == "ONE", "one-to-one", "many-to-many"))) %>%
+                           ifelse(a_mapping == "UNIQUE", "one-to-one", "many-to-many"))) %>%
   select(-files) 
 
 column_edge_map_type %>%
-  mutate(map_type = ifelse(a_mapping != b_mapping, "one-to-many",
-                           ifelse(a_mapping == "ONE", "one-to-one", "many-to-many"))) %>%
   ggplot(aes(x = map_type))+
   geom_bar()
 
 # swap around values in vertices to provide direction for igraph
 column_edge_map_type_directed <- column_edge_map_type
 for (i in 1:nrow(column_edge_map_type)){
-  if(column_edge_map_type[i,"map_type"] == "one-to-many" & column_edge_map_type[i, "a_mapping"] == "ONE"){
+  if(column_edge_map_type[i,"map_type"] == "one-to-many" & column_edge_map_type[i, "a_mapping"] == "DUP"){
     b <- column_edge_map_type[i, "a"]
     a <- column_edge_map_type[i, "b"]
     b_mapping <- column_edge_map_type[i, "a_mapping"]
@@ -204,7 +202,7 @@ ggsave("../results/sdy296_meta_data_directed_graph.png", height = 8, width = 8)
 # algorithm to score the nodes
 edge_path_find <- column_edge_map_type_directed
 for (i in 1:nrow(column_edge_map_type_directed)){
-  if(column_edge_map_type_directed[i,"map_type"] == "one-to-many" & column_edge_map_type_directed[i, "a_mapping"] == "MANY"){
+  if(column_edge_map_type_directed[i,"map_type"] == "one-to-many" & column_edge_map_type_directed[i, "a_mapping"] == "UNIQUE"){
     b <- column_edge_map_type_directed[i, "a"]
     a <- column_edge_map_type_directed[i, "b"]
     b_mapping <- column_edge_map_type_directed[i, "a_mapping"]
@@ -299,4 +297,32 @@ iterations <- 300
   }
 }
 
-vertices_score
+vert_scor_joined <- left_join(data.frame(vert = names(V(column_graph))), vertices_score)
+
+column_graph %>%
+  ggnet2(label = vert_scor_joined$score,
+         mode = "fruchtermanreingold",
+         label.size = 3,
+         label.alpha = 0.6,
+         edge.color = "color",
+         size = 20,
+         alpha = 0.3,
+         arrow.size = 5,
+         arrow.gap = 0.02,
+         layout.exp = 0.2)
+
+vertices_score %>%
+  arrange(desc(score))
+
+ggsave("../results/sdy_296_meta_istrahler_graph.png")
+
+# create data creating algorithm
+# steps:
+# 1. choose data you want
+# 2. locate files that contain data
+# 3. create multiple graph of files based on vert score
+# 4. start with highest scoring graph
+# 5. can you connect files using this graph?
+# 6. if not proceed down graph
+# 7. when you can, then you have wondering tradesman problem
+# 8. join by best route
