@@ -7,8 +7,12 @@ study<-c("SDY296","SDY301")
 dataFiles <- c("../data/sdy296/resultfiles/gene_expression_result/Nanostring_norm_data_DS10_ESIDs_SDY296.587721.txt",
   "../data/sdy301/resultfiles/gene_expression_result/Nanostring_norm_data_DS10_ESIDs_SDY301.587720.txt")
 
-cluster_mod<-"GMM_k_3D_2_model_2023-07-04.rds"
-umap_mod<-"UMAP_2D_model_export_2023-07-03.rds"
+metaFiles<-c("../data/sdy180/resultfiles/sdy180-dr47_subject_2_gene_expression_result.txt",
+  "../data/sdy296/resultfiles/sdy296-dr47_subject_2_gene_expression_result.txt",
+  "../data/sdy301/resultfiles/sdy301-dr47_subject_2_gene_expression_result.txt")
+
+cluster_mod<-"GMM_k_3_D_2_model_2023-07-04.rds"
+umap_mod<-"UMAP_2D_model_export_2023-07-04.rds"
 
 # ---------------------------------
 # Read Data
@@ -16,6 +20,10 @@ umap_mod<-"UMAP_2D_model_export_2023-07-03.rds"
 ns.d<-lapply(dataFiles,read.delim)
 names(ns.d)<-study
 
+meta.d<-lapply(metaFiles,read.delim)
+meta.d<-bind_rows(meta.d[[1]],meta.d[[2]],meta.d[[3]])
+meta.d<-meta.d%>%select(.,c("Subject.Accession","Gender","Subject.Age","ARM.Accession","Expsample.Accession"))%>%
+rename(id=Expsample.Accession)
 # ---------------------------------
 # Convert to wide
 # ---------------------------------
@@ -23,7 +31,7 @@ d.wide<-list()
 for(i in study){
   d.wide[[i]] <- ns.d[[i]] %>% select(EXP_SAMPLE_ACC_NUM,Gene_Name,Count) %>%
   pivot_wider(names_from = Gene_Name, values_from = Count) %>%
-  column_to_rownames("EXP_SAMPLE_ACC_NUM")
+  column_to_rownames("EXP_SAMPLE_ACC_NUM")%>%select(grep("^NEG",value=TRUE,invert=TRUE,names(.)))
 }
 
 # ---------------------------------
@@ -57,6 +65,7 @@ names(pred[[i]]$classification)<-rownames(UMAP_t[[i]])
 embed<-data.frame(umap_model$embedding,stringsAsFactors = F,
   "id"=rownames(umap_model$embedding),
   "Group"=factor(gmm_model$classification))
+embed$SDY="SDY180"
 
 colour_vec<-c("#32CD32","#F37FB8","#409388","#CE8BAE","#B23648",
                   "#ADD8E6","#D46E7E","#7E486B","#79AA7A","#FFEC2B",
@@ -79,11 +88,12 @@ ggRef<-ggplot(embed,aes_string(x="X1",y="X2", colour="Group"))+
 
 # New data UMAPS with cluster overlay
 ggNew<-list()
+embedNew<-list()
 for(i in study){
-  embedNew<-as.data.frame(UMAP_t[[i]])%>%mutate(id=rownames(.))%>%
-    mutate(Group=factor(pred[[i]]$classification))%>%rename(,X1=V1)%>%rename(,X2=V2)
+  embedNew[[i]]<-as.data.frame(UMAP_t[[i]])%>%mutate(id=rownames(.))%>%
+    mutate(Group=factor(pred[[i]]$classification))%>%rename(,X1=V1)%>%rename(,X2=V2)%>%mutate(SDY=i)
 
-  ggNew[[i]]<-ggplot(embedNew,aes_string(x="X1",y="X2", colour="Group"))+
+  ggNew[[i]]<-ggplot(embedNew[[i]],aes_string(x="X1",y="X2", colour="Group"))+
         geom_point(size=3,alpha=0.7)+
         theme_bw() +
         labs(color="GMM cluster")+
@@ -96,3 +106,16 @@ for(i in study){
 
 ggRef + ggNew[["SDY296"]] + ggNew[["SDY301"]]
 ggsave("../results/ns_umap_GMM.png",width=8,height=2.2)
+
+# ---------------------------------
+# Cluster characterisations
+# ---------------------------------
+
+
+
+# ---------------------------------
+# Save cluster assignments
+# ---------------------------------
+clusts<-bind_rows(embed,embedNew[["SDY296"]],embedNew[["SDY301"]])
+write.csv(clusts,"../results/GMM_k_3_D_2_clusters.csv")
+

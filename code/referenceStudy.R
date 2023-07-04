@@ -3,6 +3,7 @@ library(uwot)
 library(mclust)
 
 dataFile <- "../data/sdy180/resultfiles/gene_expression_result/Nanostring_norm_data_DS10_ESIDs_SDY180.587719.txt"
+expMeta<-"../data/sdy180/resultfiles/sdy180-dr47_subject_2_gene_expression_result.txt"
 
 # ---------------------------------
 # Read Data
@@ -11,13 +12,14 @@ dataFile <- "../data/sdy180/resultfiles/gene_expression_result/Nanostring_norm_d
 ns.d<-read.delim(dataFile)
 head(ns.d)
 
+ns.meta<-read.delim(expMeta)
 # ---------------------------------
 # Convert to wide
 # ---------------------------------
 # Convert to wide format
 d.wide <- ns.d %>% select(EXP_SAMPLE_ACC_NUM,Gene_Name,Count) %>%
   pivot_wider(names_from = Gene_Name, values_from = Count) %>%
-  column_to_rownames("EXP_SAMPLE_ACC_NUM")
+  column_to_rownames("EXP_SAMPLE_ACC_NUM")%>%select(grep("^NEG",value=TRUE,invert=TRUE,names(.)))
 
 
 # ---------------------------------
@@ -52,7 +54,7 @@ d.wide <- ns.d %>% select(EXP_SAMPLE_ACC_NUM,Gene_Name,Count) %>%
 # Optimal BIC/max silhoutte
 # ---------------------------------
 # can add here to select optimal D_value for base_umap transformation
-D_value<-2
+D_value<-2 # We are setting manually to 2
 suffix<-Sys.Date()
 modelDir<-"/Users/croftwd/Documents/welcome_ideathon/Random_Forest_Rangers/models/"
 
@@ -77,7 +79,6 @@ uwot::save_uwot(umap_model,file = paste0(modelDir,"UMAP_",D_value,"D_model_expor
 # GMM model-based clustering on reference dataset UMAP transform
 # ---------------------------------
 # GMM model & save
-suffix <- Sys.Date()
 # Choose K, the number of components in the model
 K_value = 3 # could iterate and optimise best k
 # Choose constraint for GMM covariance (note, unconstrained covariance matrices will dramatically increase run time)
@@ -98,7 +99,7 @@ GMM_model <- Mclust(umap_model$embedding,
 GMM_model$classification
 
 # Saving GMM model
-saveRDS(GMM_model,paste0(modelDir,"GMM_k_",K_value,"D_",D_value,"_model_",suffix,".rds"))
+saveRDS(GMM_model,paste0(modelDir,"GMM_k_",K_value,"_D_",D_value,"_model_",suffix,".rds"))
     
 
 # ---------------------------------
