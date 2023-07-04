@@ -11,19 +11,25 @@
   
   openai_prompt <- function(prompt) {
     url <- "https://api.openai.com/v1/chat/completions"
-    auth_header <- add_headers(`Authorization` = paste("Bearer", "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"),
-                               `Content-Type` = "application/json")
     
-    body <- toJSON(list(`model` = "gpt-3.5-turbo",
-                        `prompt` = prompt,
-                        `max_tokens` = 60))
+    body <- list(
+      `model` = "gpt-3.5-turbo",
+      `messages` = list(
+        list(`role` = "system", `content` = "You are a helpful assistant."),
+        list(`role` = "user", `content` = paste("Describe the following data column header:", prompt))
+      )
+    )
     
-    response <- POST(url, headers = auth_header, body = body, encode = "json")
+    response <- POST(url, 
+                     body = body, 
+                     encode = "json", 
+                     add_headers(c(Authorization = paste0("Bearer ", "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"),
+                                   'Content-Type' = 'application/json')))
     
-    print(content(response, "text"))  # print the response
+    response_content <- content(response, "parsed")
+    assistant_message <- response_content$choices[[1]]$message$content
     
-    result <- fromJSON(content(response, "text"))
-    return(result$choices[[1]]$text)
+    return(assistant_message)
   }
   
   interpret_headers <- function(file) {
