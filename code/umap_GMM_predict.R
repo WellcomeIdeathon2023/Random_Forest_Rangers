@@ -1,8 +1,9 @@
 library(tidyverse)
 library(uwot)
 library(patchwork)
+library(mclust)
 
-modelDir<-"/Users/croftwd/Documents/welcome_ideathon/Random_Forest_Rangers/models/"
+modelDir<-"../models/"
 study<-c("SDY296","SDY301")
 dataFiles <- c("../data/sdy296/resultfiles/gene_expression_result/Nanostring_norm_data_DS10_ESIDs_SDY296.587721.txt",
   "../data/sdy301/resultfiles/gene_expression_result/Nanostring_norm_data_DS10_ESIDs_SDY301.587720.txt")
@@ -52,9 +53,9 @@ pred<-list()
 set.seed(10)
 for(i in study){
   UMAP_t[[i]] <- uwot::umap_transform(d.wide[[i]],umap_model)
-  # Make cluster predictions using GMM model built on reference data
+  # Make cluster p/Users/croftwd/Documents/welcome_ideathon/Random_Forest_Rangers/models/redictions using GMM model built on reference data
   pred[[i]] <- predict.Mclust(newdata = UMAP_t[[i]], # This transformation 
-                               object = GMM_model) # Fit model 
+                               object = gmm_model) # Fit model 
 names(pred[[i]]$classification)<-rownames(UMAP_t[[i]])
 }
 
