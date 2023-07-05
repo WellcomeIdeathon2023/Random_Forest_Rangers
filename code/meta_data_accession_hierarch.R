@@ -1,8 +1,10 @@
 library(tidyverse)
+library(magrittr)
 library(igraph)
 library(GGally)
 library(RColorBrewer)
 library(knitr)
+library(cowplot)
 
 dir1 <- "../data/sdy296/sdy296-dr47_tab/"
 
@@ -27,6 +29,13 @@ list.files("../data/sdy296/sdy296-dr47_tab/", full.names = TRUE) %>%
   reduce(., union) %>%
   .[grepl("ACCESSION", .)]
 
+# find presence of column_names all in each file
+column_names_all <-
+list.files("../data/sdy296/sdy296-dr47_tab/", full.names = TRUE) %>%
+  map(., ~read_csv(.)) %>%
+  map(., ~colnames(.)) %>%
+  reduce(., union) 
+
 # find presence of column_names in each file
 column_data <-
 list.files(dir1, full.names = TRUE) %>%
@@ -34,6 +43,14 @@ list.files(dir1, full.names = TRUE) %>%
   map(., ~colnames(.)) %>%
   map(., ~(.[grepl("ACCESSION", .)])) %>%
   map2(., file_names, ~data.frame(column = column_names, file = .y, present = column_names %in% .x)) %>%
+  reduce(rbind) 
+
+# presence of all column_names in each file
+column_data_all <-
+list.files(dir1, full.names = TRUE) %>%
+  map(., ~read_csv(.)) %>%
+  map(., ~colnames(.)) %>%
+  map2(., file_names, ~data.frame(column = column_names_all, file = .y, present = column_names_all %in% .x)) %>%
   reduce(rbind) 
 
 # construct a graph to analyse column relationships
@@ -299,6 +316,7 @@ iterations <- 300
 
 vert_scor_joined <- left_join(data.frame(vert = names(V(column_graph))), vertices_score)
 
+#visual check on graph scores
 column_graph %>%
   ggnet2(label = vert_scor_joined$score,
          mode = "fruchtermanreingold",
@@ -311,10 +329,159 @@ column_graph %>%
          arrow.gap = 0.02,
          layout.exp = 0.2)
 
+ggsave("../results/sdy_296_meta_istrahler_graph.png")
+
 vertices_score %>%
   arrange(desc(score))
 
-ggsave("../results/sdy_296_meta_istrahler_graph.png")
+# get scores
+scores <-
+vertices_score %>%
+  pull(score) %>%
+  unique
+
+file_graphs <- list()
+file_edges_plus_cols <- list()
+for (i in 1:length(scores)) {
+
+  # get column names
+  columns_names_subset <-
+  vertices_score %>%
+    filter(score >= scores[i]) %>%
+    pull(vert)
+
+  # find presence of column_names in each file
+  column_data_subset <-
+  list.files(dir1, full.names = TRUE) %>%
+    map(., ~read_csv(.)) %>%
+    map(., ~colnames(.)) %>%
+    map(., ~.[. %in% columns_names_subset]) %>%
+    map2(., file_names, ~data.frame(column = column_names, file = .y, present = column_names %in% .x)) %>%
+    reduce(rbind) 
+
+  # construct a graph to analyse column relationships
+
+  # remove rownumber column
+  link <-
+  column_data_subset %>%
+    filter(column != "...1") %>%
+    filter(present) 
+
+  # find number of intersecting columns per file
+  get_intersect_file <- function(x) {
+    a1 <- pull(filter(link, file == x[[1]]), column)
+    b1 <- pull(filter(link, file == x[[2]]), column)
+
+    data.frame(a = x[[1]],
+               b = x[[2]],
+               intrsct = length(intersect(a1, b1))
+               ) %>% return
+  }
+
+  get_intersect_file_plus_column <- function(x) {
+    a1 <- pull(filter(link, file == x[[1]]), column)
+    b1 <- pull(filter(link, file == x[[2]]), column)
+
+    tibble(a = x[[1]],
+               b = x[[2]],
+               intrsct = length(intersect(a1, b1)),
+               columns = list(intersect(a1, b1))
+               ) %>% return
+  }
+
+  # get file names
+  files <-
+  link %>%
+    pull(file) %>%
+    unique
+
+  # compare each column to see intersect of presence in files
+  file_edges <-
+  combn(files, 2, simplify = FALSE) %>%
+    map(., ~get_intersect_file(.)) %>%
+    reduce(rbind) %>%
+    filter(intrsct >= 1) %>%
+    mutate(weight = intrsct)
+
+  file_edges_plus_cols[[i]] <-
+  combn(files, 2, simplify = FALSE) %>%
+    map(., ~get_intersect_file_plus_column(.)) %>%
+    reduce(rbind) %>%
+    filter(intrsct >= 1) %>%
+    mutate(weight = intrsct)
+
+  # create graph
+  file_graphs[[i]] <-
+  file_edges %>%
+    graph_from_data_frame(directed = FALSE)
+}
+
+plots <-
+file_graphs %>%
+  map(., ~ggnet2(., label = TRUE,
+         mode = "fruchtermanreingold",
+         label.size = 3,
+         label.alpha = 0.6,
+         size = 20,
+         alpha = 0.3,
+         arrow.size = 5,
+         arrow.gap = 0.02,
+         layout.exp = 0.2)
+  )
+
+file_edges_plus_cols[[2]]
+
+cowplot::plot_grid(plotlist = plots)
+
+# choose data needed
+column_names_all
+columns_needed <- c("EXPERIMENT_ACCESSION", "ETHNICITY")
+
+# find the files they are present in 
+files_needed <-
+column_data_all %>%
+  filter(column %in% columns_needed) %>%
+  filter(present) %>%
+  pull(file)
+
+# join files by highest scoring graph
+files_to_join <- files_needed[1:2]
+
+# find both files in graph
+
+for (i in length(file_edges_plus_cols):1){
+
+  graph_i <- file_edges_plus_cols[[i]]
+
+  present_in_graph <-
+  graph_i %>%
+    filter(a %in% files_to_join & b %in% files_to_join) %>%
+    nrow() %>% is_greater_than(0)
+
+  if(present_in_graph){
+    break
+  }
+}
+
+if(present_in_graph){
+  print("present in graph")
+} else {
+  print("not found in graph")
+}
+
+# join graphs
+
+if(present_in_graph){
+  join_by_columns <-
+  graph_i %>%
+    filter(a %in% files_to_join & b %in% files_to_join) %>%
+    pull(columns) %>%
+    extract2(1)
+
+    extract2(columns)
+
+    print
+
 
 # create data creating algorithm
 # steps:
