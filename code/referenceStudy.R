@@ -103,7 +103,7 @@ saveRDS(GMM_model,paste0(modelDir,"GMM_k_",K_value,"_D_",D_value,"_model_",suffi
     
 
 # ---------------------------------
-# Basic UMAP plot
+# Basic UMAP plots
 # ---------------------------------
 embed<-data.frame(umap_model$embedding,stringsAsFactors = F)
 
@@ -117,6 +117,48 @@ gg<-ggplot(embed,aes_string(x="X1",y="X2"))+
             axis.title.y=element_blank())#+
       #scale_color_manual(values=c("#00BFC4","#F8766D"))
     gg
+
+embed<-embed%>%rownames_to_column("Expsample.Accession")%>%left_join(.,ns.meta,by="Expsample.Accession")
+
+ggArm<-ggplot(embed,aes_string(x="X1",y="X2", colour="ARM.Accession"))+
+        geom_point(size=3,alpha=0.7)+
+        theme_bw() +
+        labs(color="Study Arm")+
+        theme(axis.line=element_blank(),axis.text.x=element_blank(),
+              axis.text.y=element_blank(),axis.ticks=element_blank(),
+              legend.position="top")+
+        xlab("UMAP1") + ylab("UMAP2")
+
+ggGender<-ggplot(embed,aes_string(x="X1",y="X2", colour="Gender"))+
+        geom_point(size=3,alpha=0.7)+
+        theme_bw() +
+        labs(color="Gender")+
+        theme(axis.line=element_blank(),axis.text.x=element_blank(),
+              axis.text.y=element_blank(),axis.ticks=element_blank(),
+              legend.position="top")+
+        xlab("UMAP1") + ylab("UMAP2")
+
+ggAge<-ggplot(embed,aes_string(x="X1",y="X2", colour="Subject.Age"))+
+        geom_point(size=3,alpha=0.7)+
+        theme_bw() +
+        labs(color="Age")+
+        theme(axis.line=element_blank(),axis.text.x=element_blank(),
+              axis.text.y=element_blank(),axis.ticks=element_blank(),
+              legend.position="top")+
+        xlab("UMAP1") + ylab("UMAP2")
+
+ggTime<-ggplot(embed,aes_string(x="X1",y="X2", colour="Planned.Visit.Name"))+
+        geom_point(size=3,alpha=0.7)+
+        theme_bw() +
+        labs(color="Timepoint")+
+        theme(axis.line=element_blank(),axis.text.x=element_blank(),
+              axis.text.y=element_blank(),axis.ticks=element_blank(),
+              legend.position="top")+
+        xlab("UMAP1") + ylab("UMAP2")
+
+
+ggGender + ggAge + ggArm + ggTime
+ggsave("../results/SDY180_ns_umap.png",width=8,height=2.2)
 
 
 
