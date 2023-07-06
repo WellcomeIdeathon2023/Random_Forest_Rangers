@@ -78,17 +78,33 @@ sel<-names(gene_variance)[1:n]
 # ---------------------------------
 # Heatmap by cluster
 # ---------------------------------
+# Colour Palette ---------------------------------------------------
+pal<-list()
+pal$Group<-c("#32CD32","#F37FB8","#409388","#CE8BAE","#B23648",
+                  "#ADD8E6","#D46E7E","#7E486B","#79AA7A","#FFEC2B",
+                  "#8D5B96","#E41A1C","#00B4F0","#3A85A8","#488846",
+                  "#BD6253","#46A169","#EB7AA9","#C4625D","#D8B62E",
+                  "#d6c624","#77777C","#4F6FA1","#E1712E","#A65628",
+                  "#B392A3","#E984B9","#F2E631","#999999")
+pal$Study<-c(SDY180="brown",SDY296="purple", SDY301="grey")
+pal$Arm<-c(ARM773="#E984B9",ARM776="#F2E631",ARM779="#999999",ARM2102="#8D5B96",ARM2107="#77777C")
+pal$Time<-c("Day_-7"="#C4625D","Day_0"="#D8B62E","Day_1"="#00B4F0","Day_7"="#EB7AA9")
+pal$Gender<-c(Female="red",Male="blue")
+names(pal$Group) <- paste0("C",seq(from=1,to=length(pal$Group),by=1))
+# ------------------------------------------------------------------
 
 # need to set annotation colour palette
-annotation_colors <- list(Cluster=palette.top$highLevelTypePal,
-                          #sample_ID=palette$samplePal,
-                          tissueType=palette$tissuePal)
+annotation_colors <- list(#Subject.Accession=palette.top$highLevelTypePal,
+                          ARM.Accession=pal$Arm,
+                          Study.Accession=pal$Study,
+                          Study.Time.Collected=pal$Time,
+                          Group=pal$Group)
 
 row_ha = rowAnnotation(count = anno_boxplot(my_data,which="row",size = unit(0.5, "mm"), width = unit(1, "cm"),box_width = 0.3))
 
 ha = HeatmapAnnotation(df = clust_gex[,c("Subject.Accession","ARM.Accession","Study.Accession","Study.Time.Collected","Group")],
                        show_annotation_name = TRUE,
-                       #col = annotation_colors,
+                       col = annotation_colors,
                        simple_anno_size = unit(0.3, "cm"),
                        show_legend = c(FALSE,TRUE,TRUE,TRUE,TRUE))
 

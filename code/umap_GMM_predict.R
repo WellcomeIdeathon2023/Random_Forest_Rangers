@@ -12,8 +12,8 @@ metaFiles<-c("../data/sdy180/resultfiles/sdy180-dr47_subject_2_gene_expression_r
   "../data/sdy296/resultfiles/sdy296-dr47_subject_2_gene_expression_result.txt",
   "../data/sdy301/resultfiles/sdy301-dr47_subject_2_gene_expression_result.txt")
 
-cluster_mod<-"GMM_k_3_D_2_model_2023-07-04.rds"
-umap_mod<-"UMAP_2D_model_export_2023-07-04.rds"
+cluster_mod<-list.files(modelDir,pattern="GMM*")
+umap_mod<-list.files(modelDir,pattern="UMAP*")
 
 # ---------------------------------
 # Read Data
@@ -21,18 +21,24 @@ umap_mod<-"UMAP_2D_model_export_2023-07-04.rds"
 ns.d<-lapply(dataFiles,read.delim)
 names(ns.d)<-study
 
-meta.d<-lapply(metaFiles,read.delim)
-meta.d<-bind_rows(meta.d[[1]],meta.d[[2]],meta.d[[3]])
-meta.d<-meta.d%>%select(.,c("Subject.Accession","Gender","Subject.Age","ARM.Accession","Expsample.Accession"))%>%
-rename(id=Expsample.Accession)
+meta.list<-lapply(metaFiles,read.delim)
+meta.d<-bind_rows(meta.list[[1]],meta.list[[2]],meta.list[[3]])
+meta.d<-meta.d%>%select(.,c("Subject.Accession","Gender","Subject.Age","ARM.Accession","Expsample.Accession"))
+
 # ---------------------------------
 # Convert to wide
 # ---------------------------------
+include<-c("Gender","Subject.Age") # Additional data to include 
+
 d.wide<-list()
 for(i in study){
   d.wide[[i]] <- ns.d[[i]] %>% select(EXP_SAMPLE_ACC_NUM,Gene_Name,Count) %>%
   pivot_wider(names_from = Gene_Name, values_from = Count) %>%
-  column_to_rownames("EXP_SAMPLE_ACC_NUM")%>%select(grep("^NEG",value=TRUE,invert=TRUE,names(.)))
+  select(grep("^NEG",value=TRUE,invert=TRUE,names(.)))%>%
+  select(grep("^POS",value=TRUE,invert=TRUE,names(.)))%>%
+  rename(Expsample.Accession=EXP_SAMPLE_ACC_NUM)%>%
+  left_join(.,meta.d[,c("Expsample.Accession",include)],by="Expsample.Accession")%>%
+  column_to_rownames("Expsample.Accession")
 }
 
 # ---------------------------------
@@ -64,9 +70,11 @@ names(pred[[i]]$classification)<-rownames(UMAP_t[[i]])
 # ---------------------------------
 
 embed<-data.frame(umap_model$embedding,stringsAsFactors = F,
-  "id"=rownames(umap_model$embedding),
+  "Expsample.Accession"=rownames(umap_model$embedding),
   "Group"=factor(gmm_model$classification))
 embed$SDY="SDY180"
+
+embed<-inner_join(embed,meta.list[[1]][,c("Expsample.Accession","Subject.Accession","Gender","Subject.Age")],by="Expsample.Accession")%>%column_to_rownames("Expsample.Accession")
 
 colour_vec<-c("#32CD32","#F37FB8","#409388","#CE8BAE","#B23648",
                   "#ADD8E6","#D46E7E","#7E486B","#79AA7A","#FFEC2B",
@@ -90,11 +98,17 @@ ggRef<-ggplot(embed,aes_string(x="X1",y="X2", colour="Group"))+
 # New data UMAPS with cluster overlay
 ggNew<-list()
 embedNew<-list()
+newStudyMeta<-meta.list[2:3]
+names(newStudyMeta)<-study
 for(i in study){
-  embedNew[[i]]<-as.data.frame(UMAP_t[[i]])%>%mutate(id=rownames(.))%>%
+    e<-as.data.frame(UMAP_t[[i]])%>%mutate(Expsample.Accession=rownames(.))%>%
     mutate(Group=factor(pred[[i]]$classification))%>%rename(,X1=V1)%>%rename(,X2=V2)%>%mutate(SDY=i)
+  
+   e<-inner_join(e,newStudyMeta[[i]][,c("Expsample.Accession","Subject.Accession","Gender","Subject.Age")],by="Expsample.Accession")%>%column_to_rownames("Expsample.Accession")
 
-  ggNew[[i]]<-ggplot(embedNew[[i]],aes_string(x="X1",y="X2", colour="Group"))+
+   embedNew[[i]]<-e
+
+   ggNew[[i]]<-ggplot(embedNew[[i]],aes_string(x="X1",y="X2", colour="Group"))+
         geom_point(size=3,alpha=0.7)+
         theme_bw() +
         labs(color="GMM cluster")+
@@ -108,11 +122,6 @@ for(i in study){
 ggRef + ggNew[["SDY296"]] + ggNew[["SDY301"]]
 ggsave("../results/ns_umap_GMM.png",width=8,height=2.2)
 
-# ---------------------------------
-# Cluster characterisations
-# ---------------------------------
-
-
 
 # ---------------------------------
 # Save cluster assignments
@@ -120,3 +129,9 @@ ggsave("../results/ns_umap_GMM.png",width=8,height=2.2)
 clusts<-bind_rows(embed,embedNew[["SDY296"]],embedNew[["SDY301"]])
 write.csv(clusts,"../results/GMM_k_3_D_2_clusters.csv")
 
+
+# ---------------------------------
+# Cluster characterisations
+# ---------------------------------
+
+# Could add Heatmap profiles of ns data for SDY96 and SDY301
