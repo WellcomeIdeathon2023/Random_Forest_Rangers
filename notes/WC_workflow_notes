@@ -1,0 +1,23 @@
+
+Uniform Manifold Approximation and Projection -assisted clustering workflow:
+
+referenceStudy.R
+	- reads in Nanostring expression data
+	- increased dimensionality is challenging for clustering algorithms so compression and noise reduction helps
+	- capture nonlinearities with UMAP dimensionality reduction to 2D (can use mixed numerical and categorical data so include age/demographics etc)
+	- identify subgroups that predict protection
+	- returns the model allowing new data to be added to an existing embedding
+	- can optimise D selection with scree plot and BIC metrics
+
+umap_GMM_predict.R
+	- Unsupervised clustering uses probabilistic model that assumes data is generated from a mixture of Gaussian distributions
+	- can optimise K (number of mixture components) by silhouette width
+
+hai_identify_protected.R
+	- having identified clusters then asses which clusters associate with protection by antibody readout
+	- finds which Nanostring + demographic data defined clusters ultimately had antibody reponse post vaccine
+
+byCluster_profiles.R
+	- taking assigned cluster labels and profiling these in other datasets having the same individuals
+	- this can identify other readouts that are correlates of the protective cluster
+	- in this case we look at RNA expression
