@@ -135,3 +135,4 @@ write.csv(clusts,"../results/GMM_k_3_D_2_clusters.csv")
 # ---------------------------------
 
 # Could add Heatmap profiles of ns data for SDY96 and SDY301
+
