@@ -320,12 +320,12 @@ vert_scor_joined <- left_join(data.frame(vert = names(V(column_graph))), vertice
 column_graph %>%
   ggnet2(label = vert_scor_joined$score,
          mode = "fruchtermanreingold",
-         label.size = 3,
+         label.size = 5,
          label.alpha = 0.6,
          edge.color = "color",
          size = 20,
          alpha = 0.3,
-         arrow.size = 5,
+         arrow.size = 8,
          arrow.gap = 0.02,
          layout.exp = 0.2)
 
@@ -426,7 +426,7 @@ file_graphs %>%
          alpha = 0.3,
          arrow.size = 5,
          arrow.gap = 0.02,
-         layout.exp = 0.2)
+         layout.exp = 0.4)
   )
 
 file_edges_plus_cols[[2]]
@@ -435,8 +435,10 @@ cowplot::plot_grid(plotlist = plots)
 ggsave("../results/graphs_by_path_score.png")
 
 # choose data needed
+# start here
 column_data_all %>% pull(column) %>% unique
 columns_needed <- c("EXPERIMENT_ACCESSION", "ETHNICITY")
+
 columns_needed <- c("EXPOSURE_MATERIAL_REPORTED", "ETHNICITY")
 # columns_needed <- c("PLANNED_VISIT_ACCESSION", "DISEASE_STAGE_REPORTED")
 
@@ -582,16 +584,4 @@ for (j in 1:(length(files_needed)-1)){
 select(file1, columns_needed, everything()) %>%
   write_csv(., "../results/post_join_output.csv")
 
-file1
-
-
-# create data creating algorithm
-# steps:
-# 1. choose data you want
-# 2. locate files that contain data
-# 3. create multiple graph of files based on vert score
-# 4. start with highest scoring graph
-# 5. can you connect files using this graph?
-# 6. if not proceed down graph
-# 7. when you can, then you have wondering tradesman problem
-# 8. join by best route
+select(file1, columns_needed, everything()) 
