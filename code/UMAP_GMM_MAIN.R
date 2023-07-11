@@ -85,7 +85,7 @@ d.wide <- ns.d %>% select(EXP_SAMPLE_ACC_NUM,Gene_Name,Count) %>%
 # can add here to select optimal D_value for base_umap transformation
 D_value<-2 # We are setting manually to 2
 
-modelDir<-"/Users/croftwd/Documents/welcome_ideathon/Random_Forest_Rangers/models/"
+modelDir<-"../models/"
 
 # ---------------------------------
 # Save the transform (ret_model =T)
@@ -153,15 +153,15 @@ names(pal$Group) <- seq(from=1,to=length(pal$Group),by=1)
 embed<-data.frame(umap_model$embedding,stringsAsFactors = F)
 
 gg<-ggplot(embed,aes_string(x="X1",y="X2"))+
-      geom_point(size=1,alpha=0.7)+
+      geom_point(size=5,alpha=0.7)+
       labs(x="UMAP1", y="UMAP2") +
       theme_bw() +
       theme(axis.line=element_blank(),axis.text.x=element_blank(),
-            axis.text.y=element_blank(),axis.ticks=element_blank(),
-            axis.title.x=element_blank(),
-            axis.title.y=element_blank())#+
+            axis.text.y=element_blank(),axis.ticks=element_blank())
       #scale_color_manual(values=c("#00BFC4","#F8766D"))
     gg
+
+    ggsave("../results/umap_dimension_reduction.png")
 
 embed<-embed%>%rownames_to_column("Expsample.Accession")%>%left_join(.,ns.meta,by="Expsample.Accession")%>%
   mutate(Group=factor(GMM_model$classification))%>%mutate(Study.Time.Collected=paste0("Day_",Study.Time.Collected))
@@ -660,26 +660,26 @@ my_data <- my_data[intersect(sel,rownames(my_data)),]
 my_data<-t(scale(t(my_data)))
 # Heatmap
 col_fun = colorRamp2(c(-3, 0, 3), c("blue", "white", "red"))
-pdf(file = "../results/mvg_rna_heat.pdf",
-    width = 6,
-    height = 10, useDingbats = F)
-Heatmap(
-  my_data,
-  col = col_fun,
-  cluster_rows = TRUE,
-  cluster_columns = FALSE,
-  column_order = NULL,
-  show_row_dend = FALSE,
-  show_column_dend = FALSE,
-  show_row_names = TRUE,
-  show_column_names = FALSE,
-  bottom_annotation = NULL,
-  row_names_gp = gpar(fontsize = 6),
-  heatmap_legend_param = list(title = ""),
-  top_annotation = ha,
-  left_annotation = row_ha
-)
-dev.off()
+# pdf(file = "../results/mvg_rna_heat.pdf",
+#     width = 6,
+#     height = 10, useDingbats = F)
+# Heatmap(
+#   my_data,
+#   col = col_fun,
+#   cluster_rows = TRUE,
+#   cluster_columns = FALSE,
+#   column_order = NULL,
+#   show_row_dend = FALSE,
+#   show_column_dend = FALSE,
+#   show_row_names = TRUE,
+#   show_column_names = FALSE,
+#   bottom_annotation = NULL,
+#   row_names_gp = gpar(fontsize = 6),
+#   heatmap_legend_param = list(title = ""),
+#   top_annotation = ha,
+#   left_annotation = row_ha
+# )
+# dev.off()
 
 
 
