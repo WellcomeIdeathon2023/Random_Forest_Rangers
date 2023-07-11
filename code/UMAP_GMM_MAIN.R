@@ -454,13 +454,21 @@ ylab("HAI") + xlab("Cluster defined by UMAP-GMM on Nanostring data")  + scale_fi
 labs(fill="Cluster") + theme(legend.position="none") + stat_compare_means()
 ggsave("../results/cluster_HAI.png",width=5,height=5)
 
-# Day 28 only
+# Day 28 only - all studies
 clust_hai%>%filter(STUDY_TIME_COLLECTED==28)%>%
 ggplot(.,aes(x=Group,y=VALUE_PREFERRED,fill=Group)) + geom_jitter(width = 0.1,size=0.2) + 
 geom_violin(width = 0.5,alpha = 0.7) +
 ylab("HAI") + xlab("Cluster defined by UMAP-GMM on Nanostring data") + scale_fill_manual(values=colour_vec) +
 labs(fill="Cluster") + theme(legend.position="none") + stat_compare_means()
 ggsave("../results/cluster_HAI_Day28.png",width=4,height=3)
+
+# Day 28 only facet by study
+clust_hai%>%filter(STUDY_TIME_COLLECTED==28)%>%
+ggplot(.,aes(x=Group,y=VALUE_PREFERRED,fill=Group)) + geom_jitter(width = 0.1,size=0.2) + 
+geom_violin(width = 0.5,alpha = 0.7) + facet_wrap(~STUDY_ACCESSION) +
+ylab("HAI") + xlab("Cluster defined by UMAP-GMM on reference data (SDY180)") + scale_fill_manual(values=colour_vec) +
+labs(fill="Cluster") + theme(legend.position="none") + stat_compare_means()
+ggsave("../results/cluster_HAI_Day28_byStudy.png",width=8,height=3)
 
 # --------------------------------------------------------------------------------------------------------------------
 # Read in new data to demonstrate prediction on single new case
