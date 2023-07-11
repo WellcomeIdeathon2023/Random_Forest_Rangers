@@ -439,161 +439,154 @@ file_graphs <- cowplot::plot_grid(plotlist = plots)
 ggsave("../results/graphs_by_path_score.png")
 
 # choose data needed
-# start here
 column_data_all %>% pull(column) %>% unique
+
+# start here
+columns_needed <- c("EXPERIMENT_ACCESSION", "ETHNICITY")
+
+columns_needed <- c("EXPOSURE_MATERIAL_REPORTED", "ETHNICITY")
 # columns_needed <- c("PLANNED_VISIT_ACCESSION", "DISEASE_STAGE_REPORTED")
 
-get_this_data <- function(columns_needed){
+# find the files they are present in 
+files_needed <-
+column_data_all %>%
+  filter(column %in% columns_needed) %>%
+  filter(present) %>%
+  pull(file)
 
-  # find the files they are present in 
-  files_needed <-
-  column_data_all %>%
-    filter(column %in% columns_needed) %>%
-    filter(present) %>%
-    pull(file)
+# join two consecutive files by highest scoring graph
+file1 <- data.frame()
 
-  # join two consecutive files by highest scoring graph
-  file1 <- data.frame()
+for (j in 1:(length(files_needed)-1)){
+  files_to_join <- files_needed[c(j,j+1)]
 
-  for (j in 1:(length(files_needed)-1)){
-    files_to_join <- files_needed[c(j,j+1)]
+  # find optimal graph to use
 
-    # find optimal graph to use
+  # reset flags
+  direct_link_present_in_graph <- FALSE
+  link_present_in_graph <- FALSE
 
-    # reset flags
-    direct_link_present_in_graph <- FALSE
-    link_present_in_graph <- FALSE
+  # find optimal graph using direct links
+  for (i in length(file_edges_plus_cols):1){
 
-    # find optimal graph using direct links
+    graph_i <- file_edges_plus_cols[[i]]
+
+    direct_link_present_in_graph <-
+    graph_i %>%
+      filter(a %in% files_to_join & b %in% files_to_join) %>%
+      nrow() %>% is_greater_than(0)
+
+    if(direct_link_present_in_graph){
+      break
+    }
+  }
+
+  if(direct_link_present_in_graph){
+    print("direct link present in graph")
+  } else {
+    print("direct link not found in graph")
+  }
+
+  # join graphs using direct link
+  if(direct_link_present_in_graph){
+    join_by_columns <-
+    graph_i %>%
+      filter(a %in% files_to_join & b %in% files_to_join) %>%
+      pull(columns) %>%
+      extract2(1)
+
+    if (nrow(file1) == 0){
+      file1 <- read_csv(filepath_linker[filepath_linker$filename == files_to_join[1], "file_location"],
+                        col_types = cols(.default = col_character())) %>% select(-"...1")
+    }
+
+    file2 <- read_csv(filepath_linker[filepath_linker$filename == files_to_join[2], "file_location"],
+                      col_types = cols(.default = col_character())) %>% select(-"...1")
+
+    joining_keys <- join_by_columns
+
+    file1 <-
+    full_join(file1, file2,
+              na_matches = "never",
+              by = setNames(joining_keys, joining_keys)
+    )
+    print("joined")
+  }
+
+  # if no direct link, find indirect link
+  if(!direct_link_present_in_graph){
+    #find graph they are present in
     for (i in length(file_edges_plus_cols):1){
 
       graph_i <- file_edges_plus_cols[[i]]
 
-      direct_link_present_in_graph <-
+      # get files from graph
+      graph_i_files <-
       graph_i %>%
-        filter(a %in% files_to_join & b %in% files_to_join) %>%
-        nrow() %>% is_greater_than(0)
+        select(a, b) %>%
+        reduce(., c) %>%
+        unique
 
-      if(direct_link_present_in_graph){
+      # check if both files are present in graph
+      link_present_in_graph <-
+        files_to_join %in% graph_i_files %>%
+        not(.) %>%
+        sum(.) %>%
+        equals(0) 
+
+      if(link_present_in_graph){
         break
       }
     }
 
-    if(direct_link_present_in_graph){
-      print("direct link present in graph")
-    } else {
-      print("direct link not found in graph")
+    if(link_present_in_graph){
+      print(i)
     }
+  }
 
-    # join graphs using direct link
-    if(direct_link_present_in_graph){
-      join_by_columns <-
-      graph_i %>%
-        filter(a %in% files_to_join & b %in% files_to_join) %>%
+  # if indirect link present, then find path across network
+  if(link_present_in_graph){
+    file_graph <- file_graphs[[i]]
+    file_link <- file_edges_plus_cols[[i]]
+
+    # shortest path
+    path1 <-
+    shortest_paths(file_graph, from = files_to_join[1],
+                   to = files_to_join[2],
+                   output = "vpath") %>%
+      extract2("vpath") %>% extract2(1) %>% names(.)
+
+    # iterate and join them
+    for(k in 1:(length(path1) - 1)){
+      # iterate and join file path
+      # find first two files
+      files_k <- path1[c(k, k + 1)]
+
+      # finding joining columns
+      joining_columns_k <- 
+      file_link %>%
+        filter(a %in% files_k & b %in% files_k) %>%
         pull(columns) %>%
         extract2(1)
 
-      if (nrow(file1) == 0){
-        file1 <- read_csv(filepath_linker[filepath_linker$filename == files_to_join[1], "file_location"],
-                          col_types = cols(.default = col_character())) %>% select(-"...1")
-      }
+      # get file to join by
+      file2 <-
+      read_csv(filepath_linker[filepath_linker$filename == files_k[2], "file_location"],
+               col_types = cols(.default = col_character())) %>% select(-"...1")
 
-      file2 <- read_csv(filepath_linker[filepath_linker$filename == files_to_join[2], "file_location"],
-                        col_types = cols(.default = col_character())) %>% select(-"...1")
+      joining_keys <- joining_columns_k
 
-      joining_keys <- join_by_columns
-
+      # join them
       file1 <-
       full_join(file1, file2,
                 na_matches = "never",
                 by = setNames(joining_keys, joining_keys)
-      )
-      print("joined")
-    }
-
-    # if no direct link, find indirect link
-    if(!direct_link_present_in_graph){
-      #find graph they are present in
-      for (i in length(file_edges_plus_cols):1){
-
-        graph_i <- file_edges_plus_cols[[i]]
-
-        # get files from graph
-        graph_i_files <-
-        graph_i %>%
-          select(a, b) %>%
-          reduce(., c) %>%
-          unique
-
-        # check if both files are present in graph
-        link_present_in_graph <-
-          files_to_join %in% graph_i_files %>%
-          not(.) %>%
-          sum(.) %>%
-          equals(0) 
-
-        if(link_present_in_graph){
-          break
-        }
-      }
-
-      if(link_present_in_graph){
-        print(i)
-      }
-    }
-
-    # if indirect link present, then find path across network
-    if(link_present_in_graph){
-      file_graph <- file_graphs[[i]]
-      file_link <- file_edges_plus_cols[[i]]
-
-      # shortest path
-      path1 <-
-      shortest_paths(file_graph, from = files_to_join[1],
-                     to = files_to_join[2],
-                     output = "vpath") %>%
-        extract2("vpath") %>% extract2(1) %>% names(.)
-
-      # iterate and join them
-      for(k in 1:(length(path1) - 1)){
-        # iterate and join file path
-        # find first two files
-        files_k <- path1[c(k, k + 1)]
-
-        # finding joining columns
-        joining_columns_k <- 
-        file_link %>%
-          filter(a %in% files_k & b %in% files_k) %>%
-          pull(columns) %>%
-          extract2(1)
-
-        # get file to join by
-        file2 <-
-        read_csv(filepath_linker[filepath_linker$filename == files_k[2], "file_location"],
-                 col_types = cols(.default = col_character())) %>% select(-"...1")
-
-        joining_keys <- joining_columns_k
-
-        # join them
-        file1 <-
-        full_join(file1, file2,
-                  na_matches = "never",
-                  by = setNames(joining_keys, joining_keys)
-                  )
-      }
+                )
     }
   }
-
-  #return(select(file1, columns_needed, everything()))
-  return(file1)
-
 }
 
-columns_needed <- c("EXPERIMENT_ACCESSION", "ETHNICITY")
-
-columns_needed <- c("EXPOSURE_MATERIAL_REPORTED", "ETHNICITY")
-
-get_this_data(columns_needed)
+print(file1)
 
 # figures
 # directed graph
