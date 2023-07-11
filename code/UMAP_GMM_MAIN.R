@@ -163,11 +163,11 @@ gg<-ggplot(embed,aes_string(x="X1",y="X2"))+
 
     ggsave("../results/umap_dimension_reduction.png")
 
-embed<-embed%>%rownames_to_column("Expsample.Accession")%>%left_join(.,ns.meta,by="Expsample.Accession")%>%
+embed3<-embed%>%rownames_to_column("Expsample.Accession")%>%left_join(.,ns.meta,by="Expsample.Accession")%>%
   mutate(Group=factor(GMM_model$classification))%>%mutate(Study.Time.Collected=paste0("Day_",Study.Time.Collected))
 
 
-ggArm<-ggplot(embed,aes_string(x="X1",y="X2", colour="ARM.Accession"))+
+ggArm<-ggplot(embed3,aes_string(x="X1",y="X2", colour="ARM.Accession"))+
         geom_point(size=3,alpha=0.7)+
         theme_bw() +
         labs(color="Study Arm")+
@@ -177,7 +177,7 @@ ggArm<-ggplot(embed,aes_string(x="X1",y="X2", colour="ARM.Accession"))+
         xlab("UMAP1") + ylab("UMAP2")+
         scale_color_manual(values=pal$Arm)
 
-ggGender<-ggplot(embed,aes_string(x="X1",y="X2", colour="Gender"))+
+ggGender<-ggplot(embed3,aes_string(x="X1",y="X2", colour="Gender"))+
         geom_point(size=3,alpha=0.7)+
         theme_bw() +
         labs(color="Gender")+
@@ -187,7 +187,7 @@ ggGender<-ggplot(embed,aes_string(x="X1",y="X2", colour="Gender"))+
         xlab("UMAP1") + ylab("UMAP2")+
         scale_color_manual(values=pal$Gender)
 
-ggAge<-ggplot(embed,aes_string(x="X1",y="X2", colour="Subject.Age"))+
+ggAge<-ggplot(embed3,aes_string(x="X1",y="X2", colour="Subject.Age"))+
         geom_point(size=3,alpha=0.7)+
         theme_bw() +
         labs(color="Age")+
@@ -196,7 +196,7 @@ ggAge<-ggplot(embed,aes_string(x="X1",y="X2", colour="Subject.Age"))+
               legend.position="top")+
         xlab("UMAP1") + ylab("UMAP2")
 
-ggTime<-ggplot(embed,aes_string(x="X1",y="X2", colour="Study.Time.Collected"))+
+ggTime<-ggplot(embed3,aes_string(x="X1",y="X2", colour="Study.Time.Collected"))+
         geom_point(size=3,alpha=0.7)+
         theme_bw() +
         labs(color="Timepoint")+
@@ -214,6 +214,9 @@ ggsave("../results/SDY180_ns_umap.png",width=8,height=7)
 # Cluster characterisations
 # ---------------------------------
 
+embed3<-embed%>%rownames_to_column("Expsample.Accession")%>%left_join(.,ns.meta,by="Expsample.Accession")%>%
+  mutate(Group=factor(GMM_model$classification))%>%mutate(Study.Time.Collected=paste0("Day_",Study.Time.Collected))
+
 # need to set annotation colour palette
 annotation_colors <- list(#Subject.Accession=palette.top$highLevelTypePal,
                           ARM.Accession=pal$Arm,
@@ -224,7 +227,7 @@ annotation_colors <- list(#Subject.Accession=palette.top$highLevelTypePal,
 d<-d.wide%>%select(-include)
 row_ha = rowAnnotation(count = anno_boxplot(d,which="row",size = unit(0.5, "mm"), width = unit(1, "cm"),box_width = 0.3))
 
-ha = HeatmapAnnotation(df = embed[,c("Subject.Accession","ARM.Accession","Study.Accession","Study.Time.Collected","Group")],
+ha = HeatmapAnnotation(df = embed3[,c("Subject.Accession","ARM.Accession","Study.Accession","Study.Time.Collected","Group")],
                        show_annotation_name = TRUE,
                        col = annotation_colors,
                        simple_anno_size = unit(0.3, "cm"),
@@ -289,9 +292,9 @@ meta.d<-meta.d%>%select(.,c("Subject.Accession","Gender","Subject.Age","ARM.Acce
 # ---------------------------------
 include<-c("Gender","Subject.Age") # Additional data to include 
 
-d.wide<-list()
+d.wides<-list()
 for(i in study){
-  d.wide[[i]] <- ns.d[[i]] %>% select(EXP_SAMPLE_ACC_NUM,Gene_Name,Count) %>%
+  d.wides[[i]] <- ns.d[[i]] %>% select(EXP_SAMPLE_ACC_NUM,Gene_Name,Count) %>%
   pivot_wider(names_from = Gene_Name, values_from = Count) %>%
   select(grep("^NEG",value=TRUE,invert=TRUE,names(.)))%>%
   select(grep("^POS",value=TRUE,invert=TRUE,names(.)))%>%
@@ -317,7 +320,7 @@ UMAP_t<-list()
 pred<-list()
 set.seed(10)
 for(i in study){
-  UMAP_t[[i]] <- uwot::umap_transform(d.wide[[i]],umap_model)
+  UMAP_t[[i]] <- uwot::umap_transform(d.wides[[i]],umap_model)
   # Make cluster p/Users/croftwd/Documents/welcome_ideathon/Random_Forest_Rangers/models/redictions using GMM model built on reference data
   pred[[i]] <- predict.Mclust(newdata = UMAP_t[[i]], # This transformation 
                                object = gmm_model) # Fit model 
@@ -328,22 +331,22 @@ names(pred[[i]]$classification)<-rownames(UMAP_t[[i]])
 # Plot reference and new data clusters
 # ---------------------------------
 
-embed<-data.frame(umap_model$embedding,stringsAsFactors = F,
-  "Expsample.Accession"=rownames(umap_model$embedding),
-  "Group"=factor(gmm_model$classification))
-embed$SDY="SDY180"
+# embed<-data.frame(umap_model$embedding,stringsAsFactors = F,
+#   "Expsample.Accession"=rownames(umap_model$embedding),
+#   "Group"=factor(gmm_model$classification))
+# embed$SDY="SDY180"
 
-embed<-inner_join(embed,meta.list[[1]][,c("Expsample.Accession","Subject.Accession","Gender","Subject.Age")],by="Expsample.Accession")%>%column_to_rownames("Expsample.Accession")
+# embed<-inner_join(embed,meta.list[[1]][,c("Expsample.Accession","Subject.Accession","Gender","Subject.Age")],by="Expsample.Accession")%>%column_to_rownames("Expsample.Accession")
 
 colour_vec<-c("#32CD32","#F37FB8","#409388","#CE8BAE","#B23648",
-                  "#ADD8E6","#D46E7E","#7E486B","#79AA7A","#FFEC2B",
-                  "#8D5B96","#E41A1C","#00B4F0","#3A85A8","#488846",
-                  "#BD6253","#46A169","#EB7AA9","#C4625D","#D8B62E",
-                  "#d6c624","#77777C","#4F6FA1","#E1712E","#A65628",
-                  "#B392A3","#E984B9","#F2E631","#999999")
+              "#ADD8E6","#D46E7E","#7E486B","#79AA7A","#FFEC2B",
+              "#8D5B96","#E41A1C","#00B4F0","#3A85A8","#488846",
+              "#BD6253","#46A169","#EB7AA9","#C4625D","#D8B62E",
+              "#d6c624","#77777C","#4F6FA1","#E1712E","#A65628",
+              "#B392A3","#E984B9","#F2E631","#999999")
 names(colour_vec) <- seq(from=1,to=length(colour_vec),by=1)
 
-ggRef<-ggplot(embed,aes_string(x="X1",y="X2", colour="Group"))+
+ggRef<-ggplot(embed3,aes_string(x="X1",y="X2", colour="Group"))+
       geom_point(size=3,alpha=0.7)+
       theme_bw() +
       labs(color="GMM cluster")+
@@ -351,7 +354,6 @@ ggRef<-ggplot(embed,aes_string(x="X1",y="X2", colour="Group"))+
             axis.text.y=element_blank(),axis.ticks=element_blank())+
       xlab("UMAP1") + ylab("UMAP2")+
       scale_color_manual(values=colour_vec) + ggtitle("SDY180")
-    ggRef
 
 # New data UMAPS with cluster overlay
 ggNew<-list()
@@ -384,7 +386,7 @@ ggsave("../results/ns_umap_GMM.png",width=8,height=2.2)
 # ---------------------------------
 # Save cluster assignments
 # ---------------------------------
-clusts<-bind_rows(embed,embedNew[["SDY296"]],embedNew[["SDY301"]])
+clusts<-bind_rows(embed3,embedNew[["SDY296"]],embedNew[["SDY301"]])
 write.csv(clusts,"../results/GMM_k_3_D_2_clusters.csv")
 
 
@@ -430,6 +432,7 @@ clusts<-read.csv("../results/GMM_k_3_D_2_clusters.csv",row.names=1)
 # Map sample id to subject
 # ---------------------------------
 clusts<-clusts%>%rename(SUBJECT_ACCESSION=Subject.Accession)
+
 length(unique(hai_df$EXPSAMPLE_ACCESSION))
 
 clust_hai<-inner_join(hai_df,clusts[,c("SUBJECT_ACCESSION","Group","Gender","Subject.Age")],by="SUBJECT_ACCESSION")
@@ -463,12 +466,15 @@ labs(fill="Cluster") + theme(legend.position="none") + stat_compare_means()
 ggsave("../results/cluster_HAI_Day28.png",width=4,height=3)
 
 # Day 28 only facet by study
+predict_hai <-
 clust_hai%>%filter(STUDY_TIME_COLLECTED==28)%>%
 ggplot(.,aes(x=Group,y=VALUE_PREFERRED,fill=Group)) + geom_jitter(width = 0.1,size=0.2) + 
-geom_violin(width = 0.5,alpha = 0.7) + facet_wrap(~STUDY_ACCESSION) +
-ylab("HAI") + xlab("Cluster defined by UMAP-GMM on reference data (SDY180)") + scale_fill_manual(values=colour_vec) +
-labs(fill="Cluster") + theme(legend.position="none") + stat_compare_means()
-ggsave("../results/cluster_HAI_Day28_byStudy.png",width=8,height=3)
+  geom_violin(width = 0.5,alpha = 0.7) + facet_wrap(~STUDY_ACCESSION)+
+  ylab("HAI") + xlab("Cluster defined by UMAP-GMM on reference data (SDY180)")+
+  scale_fill_manual(values=colour_vec) +
+  labs(fill="Cluster") + theme(legend.position="none") + stat_compare_means()
+
+# ggsave("../results/cluster_HAI_Day28_byStudy.png",width=8,height=3)
 
 # --------------------------------------------------------------------------------------------------------------------
 # Read in new data to demonstrate prediction on single new case
@@ -528,10 +534,10 @@ ns.meta<-read.delim(expMeta)
 
 embed<-data.frame(umap_model$embedding,stringsAsFactors = F)
 
-embed<-embed%>%rownames_to_column("Expsample.Accession")%>%left_join(.,ns.meta,by="Expsample.Accession")%>%
+embed5<-embed%>%rownames_to_column("Expsample.Accession")%>%left_join(.,ns.meta,by="Expsample.Accession")%>%
   mutate(Group=factor(gmm_model$classification))%>%mutate(Study.Time.Collected=paste0("Day_",Study.Time.Collected))
 
-ggRef<-ggplot(embed,aes_string(x="X1",y="X2", colour="Group"))+
+ggRef<-ggplot(embed5,aes_string(x="X1",y="X2", colour="Group"))+
       geom_point(size=3,alpha=0.7)+
       theme_bw() +
       labs(color="GMM cluster")+
@@ -540,7 +546,7 @@ ggRef<-ggplot(embed,aes_string(x="X1",y="X2", colour="Group"))+
       xlab("UMAP1") + ylab("UMAP2")+
       scale_color_manual(values=pal$Group) + ggtitle("Reference UMAP+Clustering")
 
-ggRefNew<-ggplot(embed,aes_string(x="X1",y="X2", colour="Group"))+
+ggRefNew<-ggplot(embed5,aes_string(x="X1",y="X2", colour="Group"))+
       geom_point(size=3,alpha=0.7)+
       theme_bw() +
       labs(color="GMM cluster")+
@@ -628,70 +634,73 @@ gene_variance <- gene_variance[order(gene_variance,decreasing=TRUE)]
 #
 sel<-names(gene_variance)[1:n]
 
-# ---------------------------------
-# Heatmap by cluster
-# ---------------------------------
-# Colour Palette ---------------------------------------------------
-pal<-list()
-pal$Group<-c("#32CD32","#F37FB8","#409388","#CE8BAE","#B23648",
-                  "#ADD8E6","#D46E7E","#7E486B","#79AA7A","#FFEC2B",
-                  "#8D5B96","#E41A1C","#00B4F0","#3A85A8","#488846",
-                  "#BD6253","#46A169","#EB7AA9","#C4625D","#D8B62E",
-                  "#d6c624","#77777C","#4F6FA1","#E1712E","#A65628",
-                  "#B392A3","#E984B9","#F2E631","#999999")
-pal$Study<-c(SDY180="brown",SDY296="purple", SDY301="grey")
-pal$Arm<-c(ARM773="#E984B9",ARM776="#F2E631",ARM779="#999999",ARM2102="#8D5B96",ARM2107="#77777C")
-pal$Time<-c("Day_-7"="#C4625D","Day_0"="#D8B62E","Day_1"="#00B4F0","Day_7"="#EB7AA9")
-pal$Gender<-c(Female="red",Male="blue")
-names(pal$Group) <- paste0("C",seq(from=1,to=length(pal$Group),by=1))
-# ------------------------------------------------------------------
+# heatmap
+produce_heatmap <- function(){
+  embed2<-embed%>%rownames_to_column("Expsample.Accession")%>%left_join(.,ns.meta,by="Expsample.Accession")%>%
+    mutate(Group=factor(GMM_model$classification))%>%mutate(Study.Time.Collected=paste0("Day_",Study.Time.Collected)) %>%
+    arrange(Group)
 
-# need to set annotation colour palette
-annotation_colors <- list(#Subject.Accession=palette.top$highLevelTypePal,
-                          ARM.Accession=pal$Arm,
-                          Study.Accession=pal$Study,
-                          Study.Time.Collected=pal$Time,
-                          Group=pal$Group)
+  # need to set annotation colour palette
+  annotation_colors <- list(#Subject.Accession=palette.top$highLevelTypePal,
+                            ARM.Accession=pal$Arm,
+                            Study.Accession=pal$Study,
+                            Study.Time.Collected=pal$Time,
+                            Group=pal$Group)
 
-row_ha = rowAnnotation(count = anno_boxplot(my_data,which="row",size = unit(0.5, "mm"), width = unit(1, "cm"),box_width = 0.3))
+  d<-d.wide%>%select(-include)
+  row_ha = rowAnnotation(count = anno_boxplot(d,which="row",size = unit(0.5, "mm"), width = unit(1, "cm"),box_width = 0.3))
 
-ha = HeatmapAnnotation(df = clust_gex[,c("Subject.Accession","ARM.Accession","Study.Accession","Study.Time.Collected","Group")],
-                       show_annotation_name = TRUE,
-                       col = annotation_colors,
-                       simple_anno_size = unit(0.3, "cm"),
-                       show_legend = c(FALSE,TRUE,TRUE,TRUE,TRUE))
+  ha = HeatmapAnnotation(df = embed2[,c("Subject.Accession","ARM.Accession","Study.Accession","Study.Time.Collected","Group")],
+                         show_annotation_name = TRUE,
+                         col = annotation_colors,
+                         simple_anno_size = unit(0.3, "cm"),
+                         show_legend = c(FALSE,TRUE,TRUE,TRUE,TRUE))
 
-# Expression data
-my_data <- as.matrix(gex[,clust_gex$id])
-rownames(my_data)<-gex$ENSEMBL_ID
-my_data <- my_data[intersect(sel,rownames(my_data)),]
-my_data<-t(scale(t(my_data)))
-# Heatmap
-col_fun = colorRamp2(c(-3, 0, 3), c("blue", "white", "red"))
-# pdf(file = "../results/mvg_rna_heat.pdf",
-#     width = 6,
-#     height = 10, useDingbats = F)
-# Heatmap(
-#   my_data,
-#   col = col_fun,
-#   cluster_rows = TRUE,
-#   cluster_columns = FALSE,
-#   column_order = NULL,
-#   show_row_dend = FALSE,
-#   show_column_dend = FALSE,
-#   show_row_names = TRUE,
-#   show_column_names = FALSE,
-#   bottom_annotation = NULL,
-#   row_names_gp = gpar(fontsize = 6),
-#   heatmap_legend_param = list(title = ""),
-#   top_annotation = ha,
-#   left_annotation = row_ha
-# )
-# dev.off()
+  index <- embed2$Expsample.Accession
 
+  # Expression data
+  my_data <- t(as.matrix(d[index,]))
+  my_data <- t(scale(t(my_data)))
+  # Heatmap
+  col_fun = colorRamp2(c(-3, 0, 3), c("blue", "white", "red"))
 
+  Heatmap(
+    my_data,
+    col = col_fun,
+    cluster_rows = TRUE,
+    cluster_columns = FALSE,
+    column_order = NULL,
+    show_row_dend = FALSE,
+    show_column_dend = FALSE,
+    show_row_names = TRUE,
+    show_column_names = FALSE,
+    bottom_annotation = NULL,
+    row_names_gp = gpar(fontsize = 8),
+    heatmap_legend_param = list(title = ""),
+    top_annotation = ha,
+    left_annotation = row_ha
+  )
+}
 
-	
+## Figures
+#UMAP reduction
+gg
 
+# clustering
+ggRef
 
+# heatmap
+produce_heatmap()
+
+# validation on other studies
+ggRef + ggNew[["SDY296"]] + ggNew[["SDY301"]]
+
+#demographics
+ggGender + ggAge + ggArm + ggTime
+
+# prediction of outcome
+predict_hai
+
+# prediction
+ggRef + ggRefNew
 
